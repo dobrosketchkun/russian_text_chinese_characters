@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Кириллица → 伪汉字 (рандомная транслитерация)</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: #f2f4f8;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-height: 100vh;
+        }
+        h1 { margin: 0; font-size: 1.6rem; text-align: center; }
+        
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .textarea-container {
+            position: relative;
+            width: 100%;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 40vh;
+            resize: vertical;
+            padding: 1rem;
+            border: 2px solid #ccc;
+            border-radius: 0.5rem;
+            font-size: 1.1rem;
+            line-height: 1.4;
+            background: #fff;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        
+        textarea[readonly] {
+            background: #e7ecf1;
+            color: #222;
+            padding-right: 3.5rem; 
+            padding-bottom: 3.5rem;
+        }
+
+        /* SHARED BUTTON STYLE */
+        .action-btn {
+            position: absolute;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            border: 1px solid #ccc;
+            background: #fff;
+            
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            
+            color: #666;
+            cursor: pointer;
+            opacity: 0.5;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+        }
+
+        .action-btn:hover {
+            opacity: 1;
+            color: #222;
+            border-color: #999;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transform: scale(1.05);
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Top Right: Reroll */
+        #reroll {
+            top: 0.8rem;
+            right: 0.8rem;
+            font-size: 1.4rem;
+        }
+        #reroll:hover {
+            transform: rotate(180deg);
+        }
+
+        /* Bottom Right: Copy */
+        #copy {
+            bottom: 0.8rem;
+            right: 0.8rem;
+            font-size: 1.4rem;
+        }
+
+        @media (min-width: 800px) {
+            main { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+            h1 { text-align: left; }
+            textarea { height: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Кириллица ⟶ 伪汉字</h1>
+
+    <main>
+        <section class="textarea-container">
+            <textarea id="source" placeholder="Введите кириллический текст здесь…"></textarea>
+        </section>
+        <section class="textarea-container">
+            <textarea id="result" readonly="" placeholder="Здесь будет транслитерация…"></textarea>
+            
+            <!-- Top Right: Reroll -->
+            <button id="reroll" class="action-btn" title="Перегенерировать (рандомизировать снова)">↻</button>
+            
+            <!-- Bottom Right: Copy -->
+            <button id="copy" class="action-btn" title="Копировать в буфер">❐</button>
+        </section>
+    </main>
+
+<script>
+(() => {
+    const MAP = {
+        ' ': ['　'], // Replaces standard space with Ideographic Space
+        'А': ['丹', '升', '什', '闩', '丼', '凡', '幵', '并', '幷', '开', '犴'],
+        'Б': ['石', '右', '五'],
+        'В': ['归', '乃', '巧', '日', '扫', '丑', '书', '佀', '侣', '及', '呂', '官', '宫', '宮', '弔', '昌', '杛', '犸', '玛', '疓', '阝', '马', '鸟'],
+        'Г': ['厂', '广', '屵', '疒'],
+        'Д': ['亼', '囗'],
+        'Е': ['巨', '乞', '仨', '巳', '它', '正', '臣', '亖', '乜', '三', '佢', '宦'],
+        'Ё': ['庄'],
+        'Ж': ['水', '卌', '兴', '川', '氽', '米', '丱', '來', '兆', '帯', '木', '氺', '永', '氷'],
+        'З': ['乡', '弓'],
+        'И': ['仈'],
+        'Й': ['订', '计', '认'],
+        'К': ['片', '长', '沜'],
+        'Л': ['几', '人', '穴', '入', '介', '儿', '八', '凢', '凣'],
+        'М': ['从', '册', '爪', '巾'],
+        'Н': ['廾', '卄', '扑', '扦', '艹'],
+        'О': ['口', '冋', '囗', '回', '日', '曰', '母', '臼'],
+        'П': ['冂', '门', '刀', '亓', '亣', '亢', '仃', '们', '兀', '允', '元', '宂', '竹', '鬥'],
+        'Р': ['卩', '户', '尸', '卫', '尹', '戶', '戸', '沪', '肀'],
+        'С': ['匚', '仁', '亡', '匸'],
+        'Т': ['丁', '丅', '下', '乇', '亍', '卞', '宁', '饣'],
+        'У': ['丫'],
+        'Ф': ['中', '丣', '伞', '傘', '史', '吏', '戼', '曱', '申', '甲', '电', '甼'],
+        'Х': ['乂', '父'],
+        'Ц': ['凵'],
+        'Ч': ['丩'],
+        'Ш': ['山', '巛', '川'],
+        'Щ': ['山'],
+        'Ь': ['匕'],
+        'Ы': ['辷', '劜', '忆', '忋', '札'],
+        'Ъ': ['乙'],
+        'Э': ['彐', '刁', '当'],
+        'Ю': ['扣', '仰', '仾', '卭', '圳', '坩', '埡', '扏', '旧'],
+        'Я': ['牙', '兑', '兄', '只', '免', '児', '身']
+    };
+
+    const src = document.getElementById('source');
+    const dest = document.getElementById('result');
+    const rerollBtn = document.getElementById('reroll');
+    const copyBtn = document.getElementById('copy');
+
+    function pick(arr){
+        return arr[Math.floor(Math.random()*arr.length)];
+    }
+
+    function transliterate(text){
+        let out = '';
+        for(const ch of text){
+            if(MAP[ch]){
+                out += pick(MAP[ch]);
+            } else {
+                const upper = ch.toUpperCase();
+                if(MAP[upper]){
+                    out += pick(MAP[upper]);
+                } else {
+                    out += ch;
+                }
+            }
+        }
+        return out;
+    }
+
+    // 1. Live Input Update
+    src.addEventListener('input', () => {
+        dest.value = transliterate(src.value);
+    });
+
+    // 2. Reroll Button
+    rerollBtn.addEventListener('click', () => {
+        if(src.value.trim() !== '') {
+            dest.value = transliterate(src.value);
+        }
+    });
+
+    // 3. Copy Button
+    copyBtn.addEventListener('click', () => {
+        const textToCopy = dest.value;
+        if(!textToCopy) return;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const originalIcon = copyBtn.innerText;
+            copyBtn.innerText = '✓';
+            copyBtn.style.color = '#28a745'; 
+            copyBtn.style.borderColor = '#28a745';
+            copyBtn.style.opacity = '1';
+
+            setTimeout(() => {
+                copyBtn.innerText = originalIcon;
+                copyBtn.style.color = ''; 
+                copyBtn.style.borderColor = '';
+                copyBtn.style.opacity = '';
+            }, 1500);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            alert('Не удалось скопировать текст.');
+        });
+    });
+
+})();
+</script>
+</body>
+</html>
